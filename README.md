@@ -6,12 +6,13 @@ See the opscode community cookbook site.
 Requirements
 ============
 
-Chef 0.10.4 or higher required (for Chef environment use).
+* Chef 0.10.4 or higher required
+* Working chef server
+* Application cookbook and an apps data bag
 
 Usage
 =====
 
-# From the shell of a registered chef node:
 shell>  chef-deploy-application APPNAME
 
 
