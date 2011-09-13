@@ -8,6 +8,8 @@ require 'chef/log'
 require 'chef/rest'
 require 'chef/handler/error_report'
 
+require "chef-deploy-application/version"
+
 class Chef::Application::DeployApplication < Chef::Application
 
   # Mimic self_pipe sleep from Unicorn to capture signals safely
@@ -167,11 +169,33 @@ class Chef::Application::DeployApplication < Chef::Application
       # Make sure the client knows this is not chef solo
       Chef::Config[:solo] = false
 
-      puts "<<<<<<  Chef client run >>>>>>"
+      # Rebuild node
+      client = Chef::Client.new
+      client.run_ohai
+      client.register
+      client.build_node
 
-      @shef = Shef::ClientSession.instance
-      @shef.recipe.instance_eval do
 
+      # Shorten node inspection
+      node = client.node
+      def node.inspect
+        "<Chef::Node:0x#{self.object_id.to_s(16)} @name=\"#{self.name}\">"
+      end
+
+      # Rebuild context
+      run_status = Chef::RunStatus.new(node)
+      Chef::Cookbook::FileVendor.on_create { |manifest| Chef::Cookbook::RemoteFileVendor.new(manifest, Chef::REST.new(Chef::Config[:server_url])) }
+      cookbook_hash = client.sync_cookbooks
+      cookbooks = Chef::CookbookCollection.new(cookbook_hash)
+
+      run_context = Chef::RunContext.new(node, cookbooks)
+      run_context.load(Chef::RunList::RunListExpansionFromAPI.new(node.chef_environment, []))
+      run_status.run_context = run_context
+
+
+      # Setup the recipe
+      recipe = Chef::Recipe.new(nil, nil, run_context)
+      recipe.instance_eval do
         app = search(:apps, "id:#{ARGV[0]}").first
         (app["server_roles"] & node.run_list.roles).each do |app_role|
           app["type"][app_role].each do |thing|
@@ -185,8 +209,9 @@ class Chef::Application::DeployApplication < Chef::Application
         node.run_state.delete(:current_app)
       end
 
-      # Run the session
-      Chef::Runner.new(@shef.run_context).converge
+      # Run the recipe
+      Chef::Runner.new(run_context).converge
+
       Chef::Application.exit! "Exiting", 0
     rescue SystemExit => e
       raise
