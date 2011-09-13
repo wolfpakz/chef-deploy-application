@@ -1,10 +1,10 @@
 # -*- encoding: utf-8 -*-
 $:.push File.expand_path("../lib", __FILE__)
-require "chef-deploy-application"
+require "chef-deploy-application/version"
 
 Gem::Specification.new do |s|
   s.name        = "chef-deploy-application"
-  s.version     = Chef::Application::DeployApplication::VERSION
+  s.version     = ::ChefDeployApplicationGem::VERSION
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Daniel Porter"]
   s.email       = ["wolfpakz@gmail.com"]

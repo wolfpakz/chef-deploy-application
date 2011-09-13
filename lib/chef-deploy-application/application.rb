@@ -1,3 +1,4 @@
+
 require 'chef'
 require 'chef/application'
 require 'chef/client'
@@ -9,8 +10,6 @@ require 'chef/handler/error_report'
 
 class Chef::Application::DeployApplication < Chef::Application
 
-  VERSION = "0.0.1"
-  
   # Mimic self_pipe sleep from Unicorn to capture signals safely
   SELF_PIPE = []
 
@@ -93,7 +92,7 @@ class Chef::Application::DeployApplication < Chef::Application
     :long         => "--version",
     :description  => "Show chef version",
     :boolean      => true,
-    :proc         => lambda {|v| puts "Chef Deploy Application: #{::Chef::Application::DeployApplication::VERSION}"},
+    :proc         => lambda {|v| puts "Chef Deploy Application: #{::ChefDeployApplicationGem::VERSION}"},
     :exit         => 0
 
   attr_reader :chef_client_json
@@ -172,6 +171,7 @@ class Chef::Application::DeployApplication < Chef::Application
 
       @shef = Shef::ClientSession.instance
       @shef.recipe.instance_eval do
+
         app = search(:apps, "id:#{ARGV[0]}").first
         (app["server_roles"] & node.run_list.roles).each do |app_role|
           app["type"][app_role].each do |thing|
