@@ -166,6 +166,8 @@ class Chef::Application::DeployApplication < Chef::Application
     end
 
     begin
+      Chef::Log.info("*** Chef #{Chef::VERSION} ***")
+
       # Make sure the client knows this is not chef solo
       Chef::Config[:solo] = false
 
@@ -194,15 +196,23 @@ class Chef::Application::DeployApplication < Chef::Application
 
 
       # Setup the recipe
+      app_name = application_name
       recipe = Chef::Recipe.new(nil, nil, run_context)
       recipe.instance_eval do
-        app = search(:apps, "id:#{ARGV[0]}").first
-        (app["server_roles"] & node.run_list.roles).each do |app_role|
-          app["type"][app_role].each do |thing|
-            recipe_name = "application::#{thing}"
-            node.run_state[:current_app] = app
-            node.run_state[:seen_recipes].delete(recipe_name)
-            include_recipe recipe_name
+        app = search(:apps, "id:#{app_name}").first
+        raise "Cannot find an application named #{app_name}" unless app
+
+        server_roles = (app["server_roles"] & node.run_list.roles)
+        if server_roles.empty?
+          Chef::Log.info("None of this server's roles match the app's server_roles.")
+        else
+          server_roles.each do |app_role|
+            app["type"][app_role].each do |thing|
+              recipe_name = "application::#{thing}"
+              node.run_state[:current_app] = app
+              node.run_state[:seen_recipes].delete(recipe_name)
+              include_recipe recipe_name
+            end
           end
         end
 
@@ -222,6 +232,11 @@ class Chef::Application::DeployApplication < Chef::Application
   end
 
   private
+
+  def application_name
+    return nil if no_app_name_given?
+    ARGV[0]
+  end
 
   def no_app_name_given?
     ARGV.empty?
