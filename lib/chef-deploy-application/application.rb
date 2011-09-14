@@ -201,6 +201,10 @@ class Chef::Application::DeployApplication < Chef::Application
       app_name = application_name
       recipe = Chef::Recipe.new(nil, nil, run_context)
       recipe.instance_eval do
+        # Run the applications cookbook
+        node.run_state[:seen_recipes].delete(app_name)
+        include_recipe app_name
+        
         app = search(:apps, "id:#{app_name}").first
         raise "Cannot find an application named #{app_name}" unless app
 
