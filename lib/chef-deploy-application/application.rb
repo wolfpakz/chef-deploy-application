@@ -225,8 +225,13 @@ class Chef::Application::DeployApplication < Chef::Application
         node.run_state.delete(:current_app)
       end
 
+
       # Run the recipe
+      run_status.start_clock
       Chef::Runner.new(run_context).converge
+
+      run_status.stop_clock
+      Chef::Log.info("Chef Deploy complete in #{run_status.elapsed_time} seconds")
 
       Chef::Application.exit! "Exiting", 0
     rescue SystemExit => e
