@@ -194,6 +194,8 @@ class Chef::Application::DeployApplication < Chef::Application
       run_context.load(Chef::RunList::RunListExpansionFromAPI.new(node.chef_environment, []))
       run_status.run_context = run_context
 
+      # Merge json
+      node.consume_attributes(@chef_client_json) if @chef_client_json
 
       # Setup the recipe
       app_name = application_name
