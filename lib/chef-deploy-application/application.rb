@@ -102,6 +102,7 @@ class Chef::Application::DeployApplication < Chef::Application
   def initialize
     super
 
+    @apps = []
     @chef_client = nil
     @chef_client_json = nil
   end
@@ -146,6 +147,29 @@ class Chef::Application::DeployApplication < Chef::Application
         Chef::Application.fatal!("Could not parse the provided JSON file (#{Chef::Config[:json_attribs]})!: " + error.message, 2)
       end
     end
+  end
+
+  def configure_chef
+    @apps = parse_options
+
+    begin
+      case config[:config_file]
+      when /^(http|https):\/\//
+        Chef::REST.new("", nil, nil).fetch(config[:config_file]) { |f| apply_config(f.path) }
+      else
+        ::File::open(config[:config_file]) { |f| apply_config(f.path) }
+      end
+    rescue SocketError => error
+      Chef::Application.fatal!("Error getting config file #{Chef::Config[:config_file]}", 2)
+    rescue Exception => error
+      Chef::Log.warn("*****************************************")
+      Chef::Log.warn("Can not find config file: #{config[:config_file]}, using defaults.")
+      Chef::Log.warn("#{error.message}")
+      Chef::Log.warn("*****************************************")
+
+      Chef::Config.merge!(config)
+    end
+
   end
 
   def configure_logging
@@ -210,7 +234,7 @@ class Chef::Application::DeployApplication < Chef::Application
 
         server_roles = (app["server_roles"] & node.run_list.roles)
         if server_roles.empty?
-          Chef::Log.info("None of this server's roles match the app's server_roles.")
+          Chef::Log.info("None of this server's roles match the app's server_roles. Double-check the server_roles configured in the app's data bag.")
         else
           server_roles.each do |app_role|
             app["type"][app_role].each do |thing|
@@ -246,11 +270,11 @@ class Chef::Application::DeployApplication < Chef::Application
 
   def application_name
     return nil if no_app_name_given?
-    ARGV[0]
+    @apps.first
   end
 
   def no_app_name_given?
-    ARGV.empty?
+    @apps.empty?
   end
 
 end
